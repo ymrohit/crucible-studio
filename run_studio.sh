@@ -4,6 +4,13 @@ set -euo pipefail
 PORT="${PORT:-8001}"
 HOST="${HOST:-127.0.0.1}"
 
+if [ -f ".env" ]; then
+  set -a
+  # Strip Windows CRLF line endings so copied .env files still source cleanly.
+  source <(sed 's/\r$//' .env)
+  set +a
+fi
+
 if [ ! -d ".venv" ]; then
   python -m venv .venv
 fi

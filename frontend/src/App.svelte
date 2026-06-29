@@ -6,18 +6,26 @@
   import { liveRun } from './events.js'
   import Code from './Code.svelte'
 
-  const BROKEN_LIMITER = `class RollingLimiter:
-    def __init__(self, limit, window_seconds):
-        self.limit = limit
-        self.window_seconds = window_seconds
-        self.events = []
-
-    def allow(self, user_id, timestamp, event_id=None):
-        self.events = [t for t in self.events if timestamp - t < self.window_seconds]
-        if len(self.events) >= self.limit:
-            return False
-        self.events.append(timestamp)
-        return True
+  const BROKEN_LIMITER = `def allow_events(events, limit, window_seconds):
+    history = {}
+    seen_ids = {}
+    decisions = []
+    for event in events:
+        user_id = event["user_id"]
+        timestamp = event["timestamp"]
+        event_id = event.get("event_id")
+        window = history.setdefault(user_id, [])
+        window[:] = [t for t in window if timestamp - t <= window_seconds]
+        if event_id is not None and event_id in seen_ids.setdefault(user_id, set()):
+            decisions.append(True)
+            continue
+        allowed = len(window) <= limit
+        if allowed:
+            window.append(timestamp)
+        if event_id is not None:
+            seen_ids[user_id].add(event_id)
+        decisions.append(allowed)
+    return decisions
 `
   const BROKEN_BATCHES = `def topological_batches(tasks):
     # tasks: [{"id": "build", "deps": ["lint"]}, ...]
@@ -80,7 +88,7 @@
         label: 'broken limiter',
         source: 'snippet',
         code: BROKEN_LIMITER,
-        prompt: 'Repair this rate limiter while preserving the RollingLimiter(limit, window_seconds).allow(user_id, timestamp, event_id=None) API. It must isolate users, handle out-of-order timestamps, expire the inclusive boundary correctly, make duplicate event_id calls idempotent, and keep memory bounded.',
+        prompt: 'Repair allow_events(events, limit, window_seconds). Events are dicts with user_id, timestamp, and event_id. The function must isolate users, handle out-of-order timestamps, expire timestamps exactly window_seconds old, make duplicate event_id calls idempotent by returning the original decision, keep memory bounded, and return decisions in input order.',
       },
       {
         id: 'pasted-batches',
@@ -358,6 +366,14 @@
     return Boolean((oracle?.example_tests || []).length || (oracle?.property_tests || []).length || oracle?.differential_reference)
   }
 
+  function gauntletOutputTitle() {
+    if (verdict === 'verified') return 'gauntlet passed'
+    if (verdict === 'floor') return 'best partial output'
+    if (verdict === 'error') return 'run error'
+    if (running) return 'gauntlet running'
+    return 'gauntlet output'
+  }
+
   function apply(ev) {
     switch (ev.type) {
       case 'vanilla_start':
@@ -438,18 +454,11 @@
   }
 
   function runPrompt() {
-    if (mode !== 'repo' || fixSource !== 'snippet') return prompt
-    return `Repair the pasted code below. Preserve the public API unless the task explicitly asks to change it. Return a complete corrected implementation, not a diff.
-
-Task:
-${prompt}
-
-Broken code:
-${sourceCode}`
+    return prompt
   }
 
   function requestMode() {
-    return mode === 'repo' && fixSource === 'snippet' ? 'code' : mode
+    return mode === 'repo' && fixSource === 'snippet' ? 'repair' : mode
   }
 
   function run() {
@@ -458,7 +467,7 @@ ${sourceCode}`
     reset(); running = true
     const repo = repoPath.trim() || 'webrepo'
     let got = false
-    stopFn = liveRun({ mode: requestMode(), prompt: runPrompt(), repo }, (e) => { got = true; apply(e) })
+    stopFn = liveRun({ mode: requestMode(), prompt: runPrompt(), repo, sourceCode }, (e) => { got = true; apply(e) })
     setTimeout(() => {
       if (!got && running) {
         stopFn && stopFn()
@@ -1002,7 +1011,43 @@ ${sourceCode}`
               {:else}<div class="note">{fixSource === 'snippet' ? 'Run to freeze the repair contract and generate adversarial tests.' : 'investigating the repo...'}</div>{/if}
             </div>
           {:else if tab === 'test'}
-            <div class="art-h">{test?.path || 'test the blind adversary wrote'}</div><Code text={test?.content} />
+            {#if fixSource === 'snippet'}
+              <div class="test-panel embedded">
+                {#if oracle}
+                  <div class="test-summary">
+                    <span>{oracleExampleCount()} examples</span>
+                    <span>{oraclePropertyCount()} properties</span>
+                    <span>{oracle.has_reference ? 'reference diff' : 'no reference diff'}</span>
+                  </div>
+                  <div class="test-list">
+                    {#each (oracle.example_tests || []).slice(0, 8) as ex}
+                      <div class="test-item">
+                        <b>[{ex.boundary_category}]</b>
+                        <code>{ex.input_repr}</code>
+                        <code>=> {ex.expected_repr}</code>
+                      </div>
+                    {/each}
+                    {#each (oracle.property_tests || []).slice(0, 4) as prop}
+                      <div class="test-item property">
+                        <b>{prop.name}</b>
+                        <code>{prop.strategy}</code>
+                        <pre>{prop.code}</pre>
+                      </div>
+                    {/each}
+                    {#if oracle.differential_reference}
+                      <div class="test-item property">
+                        <b>differential reference</b>
+                        <pre>{oracle.differential_reference}</pre>
+                      </div>
+                    {/if}
+                  </div>
+                {:else}
+                  <div class="note">generated tests appear here after the adversary finishes</div>
+                {/if}
+              </div>
+            {:else}
+              <div class="art-h">{test?.path || 'test the blind adversary wrote'}</div><Code text={test?.content} />
+            {/if}
           {:else if tab === 'diff'}
             {#if fixSource === 'snippet'}
               {#if delivered?.code || diff}
@@ -1014,8 +1059,34 @@ ${sourceCode}`
               <Code text={diff} diff={true} />
             {/if}
           {:else}
-            <div class="art-h">{testOutput ? (testOutput.passed ? '✓ tests passed' : '✕ tests failed') : 'test output'}</div>
-            <Code text={testOutput?.text} />
+            {#if fixSource === 'snippet'}
+              <div class="art-h">{gauntletOutputTitle()}</div>
+              {#if stages.length || ce || surgeon || delivered}
+                <div class="output-stack">
+                  {#each stages as s (s.name)}
+                    <div class="output-row {s.status}">
+                      <i class="mk"></i>
+                      <span class="nm mono">{s.name}</span>
+                      <b>{s.detail || 'running'}</b>
+                    </div>
+                  {/each}
+                  {#if ce}
+                    <div class="ce compact">
+                      <div class="ce-h">counterexample</div>
+                      <div class="ce-row"><span>in</span><b class="mono">{ce.input_repr}</b></div>
+                      <div class="ce-row"><span>got</span><b class="mono bad">{ce.actual_repr}</b></div>
+                      <div class="ce-row"><span>want</span><b class="mono good">{ce.expected_repr}</b></div>
+                    </div>
+                  {/if}
+                  {#if surgeon}<div class="patch">{surgeon}</div>{/if}
+                </div>
+              {:else}
+                <div class="note">runtime output appears here while the pasted code is tested and repaired</div>
+              {/if}
+            {:else}
+              <div class="art-h">{testOutput ? (testOutput.passed ? '✓ tests passed' : '✕ tests failed') : 'test output'}</div>
+              <Code text={testOutput?.text} />
+            {/if}
           {/if}
         </div>
       </section>
@@ -1167,6 +1238,18 @@ ${sourceCode}`
   .test-item b { color: var(--ink); font-size: 11.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .test-item code, .test-item pre { min-width: 0; overflow: auto; color: var(--muted); font-family: var(--mono); font-size: 11px; line-height: 1.45; white-space: pre-wrap; }
   .test-item.property { grid-template-columns: minmax(90px, .35fr) minmax(0, .8fr) minmax(0, 1fr); }
+  .test-panel.embedded { margin: 0; border-radius: 0; background: transparent; }
+  .output-stack { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 8px; padding: 12px; }
+  .output-row { display: grid; grid-template-columns: 16px minmax(86px, .32fr) minmax(0, 1fr); align-items: center; gap: 9px; padding: 9px 10px; border-radius: 9px; background: var(--surface); border: 1px solid var(--line); }
+  .output-row .mk { width: 16px; height: 16px; border-radius: 5px; background: var(--line-2); position: relative; }
+  .output-row.running .mk { background: var(--accent); animation: pulse 1s infinite; }
+  .output-row.pass .mk { background: var(--green); }
+  .output-row.pass .mk::after { content: '✓'; position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 10px; font-weight: 800; }
+  .output-row.fail .mk, .output-row.error .mk { background: var(--red); }
+  .output-row.fail .mk::after, .output-row.error .mk::after { content: '✕'; position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 10px; font-weight: 800; }
+  .output-row .nm { color: var(--ink); font-size: 12px; }
+  .output-row b { min-width: 0; color: var(--muted); font-size: 11.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ce.compact { padding: 11px 12px; }
 
   .tag { font-size: 11px; font-weight: 600; padding: 4px 9px; border-radius: 7px; }
   .tag.warn { background: color-mix(in srgb, var(--amber) 14%, transparent); color: var(--amber); }

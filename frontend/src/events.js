@@ -1,9 +1,10 @@
 // Live Server-Sent Events from the FastAPI backend.
 
-export function liveRun({ mode, prompt, repo }, onEvent) {
+export function liveRun({ mode, prompt, repo, sourceCode }, onEvent) {
   const params = new URLSearchParams({ prompt, mode })
   if (mode === 'code') params.set('baseline', 'gemini')
   if (mode === 'repo') params.set('repo', repo || 'webrepo')
+  if (mode === 'repair') params.set('source_code', sourceCode || '')
   const es = new EventSource('/run_stream?' + params.toString())
   es.onmessage = (m) => {
     let ev

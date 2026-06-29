@@ -32,6 +32,7 @@ from ..bench.vanilla_baseline import vanilla_stream
 from ..oracle import harness
 from ..oracle.sandbox import get_sandbox
 from ..orchestrator import state_machine
+from ..shared.schemas import Candidate
 
 _STATIC = Path(__file__).parent / "static"
 _REPO_ROOT = Path(__file__).resolve().parents[2]   # /home/tihor/crucible
@@ -161,6 +162,35 @@ def _crucible_worker(run: Run) -> None:
         run.finish_one()
 
 
+def _repair_worker(run: Run, source_code: str) -> None:
+    sink = _sink_for(run)
+    acquired = _CRUCIBLE_SEM.acquire(timeout=180)
+    try:
+        if run.stopped.is_set():
+            return
+        if not acquired:
+            run.push({"type": "run_error", "message": "server busy; another run is in progress"})
+            return
+        if not source_code.strip():
+            run.push({"type": "run_error", "message": "paste the broken code before running repair"})
+            return
+        initial = Candidate(code=source_code, reasoning="pasted code under repair")
+        result = state_machine.run(
+            run.prompt,
+            sink=sink,
+            inject_candidate=initial,
+            should_stop=run.stopped.is_set,
+        )
+        if run.crucible_code is None:
+            run.crucible_code = result.code
+    except Exception as e:  # pragma: no cover
+        run.push({"type": "run_error", "message": f"{type(e).__name__}: {e}"})
+    finally:
+        if acquired:
+            _CRUCIBLE_SEM.release()
+        run.finish_one()
+
+
 def _product_worker(run: Run) -> None:
     from ..orchestrator.webapp_loop import webapp_run
     from ..orchestrator.budget import Budget
@@ -220,9 +250,9 @@ def _repo_worker(run: Run, repo_key: str) -> None:
 
 @app.get("/run_stream")
 async def run_stream(prompt: str, mode: str = "code", baseline: str = "gemini",
-                     repo: str = "pyrepo") -> StreamingResponse:
+                     repo: str = "pyrepo", source_code: str = "") -> StreamingResponse:
     prompt = (prompt or "").strip()
-    mode = mode if mode in ("code", "app", "repo") else "code"
+    mode = mode if mode in ("code", "app", "repo", "repair") else "code"
     loop = asyncio.get_running_loop()
     run = Run(prompt, mode, loop)
     _register(run)
@@ -231,6 +261,8 @@ async def run_stream(prompt: str, mode: str = "code", baseline: str = "gemini",
         threading.Thread(target=_product_worker, args=(run,), daemon=True).start()
     elif mode == "repo":
         threading.Thread(target=_repo_worker, args=(run, repo), daemon=True).start()
+    elif mode == "repair":
+        threading.Thread(target=_repair_worker, args=(run, source_code), daemon=True).start()
     else:
         threading.Thread(target=_baseline_worker, args=(run, baseline), daemon=True).start()
         threading.Thread(target=_crucible_worker, args=(run,), daemon=True).start()

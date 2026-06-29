@@ -36,6 +36,8 @@ outputs/
 *.jsonl
 crucible.crucible_*.json
 gold.gold_build.json
+*.mp4
+*.mov
 CompetitionBrief.pdf
 *.Zone.Identifier
 *:Zone.Identifier
