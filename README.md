@@ -3,9 +3,11 @@
 **Trust, but verify for generated code.**
 
 Crucible Studio is a Gemma 4 / Cerebras agent system that refuses to ship code just because it
-looks plausible. It turns a prompt into a frozen contract, generates adversarial tests blind to the
-candidate, executes a real oracle gauntlet, repairs from counterexamples, and only marks the result
-verified when the runtime evidence goes green.
+looks plausible. Cerebras speed is what makes the loop practical: Gemma 4 31B can draft, test,
+repair, and re-run in an interactive demo instead of a slow offline batch. Crucible turns a prompt
+into a frozen contract, generates adversarial tests blind to the candidate, executes a real oracle
+gauntlet, repairs from counterexamples, and only marks the result verified when the runtime evidence
+goes green.
 
 [Watch the demo video](Crucible.mp4)
 
@@ -22,6 +24,9 @@ Public repo: https://github.com/ymrohit/crucible-studio
   as the full SWE-bench Lite percentage.
 - **Runnable products:** vanilla **0/4** -> Crucible **4/4**, each boot-verified in Docker against a
   blind HTTP integration test.
+- **Cerebras speed advantage:** the app streams live tokens/sec and uses the extra throughput for
+  multiple agent calls plus repair iterations. The point is not just faster first text; it is enough
+  speed to run verification before the user loses the thread.
 
 Full methodology is in [RESULTS.md](RESULTS.md). The loop never sees hidden scoring tests; it only
 uses its own blind Adversary oracle during repair.
