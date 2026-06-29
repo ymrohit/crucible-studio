@@ -11,6 +11,21 @@ verified when the runtime evidence goes green.
 
 Public repo: https://github.com/ymrohit/crucible-studio
 
+## Headline Results
+
+- **Hard recent LeetCode:** vanilla Gemma 4 31B **39.2%** pass@1 -> Crucible **52.5%**
+  pass@1, a **+13.3 point lift** across 40 Medium/Hard Feb-Mar 2025 problems and 3 seeds.
+- **SWE-bench Lite:** Crucible resolves real official-harness instances end-to-end without seeing
+  hidden tests. Confirmed `pallets__flask-4045` resolved 1/1, plus **4 distinct curated single-file
+  Lite instances** across runs (`django__django-11179`, `django__django-13315`,
+  `sympy__sympy-15345`, `pallets__flask-4045`). Honest caveat: that curated subset is not claimed
+  as the full SWE-bench Lite percentage.
+- **Runnable products:** vanilla **0/4** -> Crucible **4/4**, each boot-verified in Docker against a
+  blind HTTP integration test.
+
+Full methodology is in [RESULTS.md](RESULTS.md). The loop never sees hidden scoring tests; it only
+uses its own blind Adversary oracle during repair.
+
 ## What It Shows
 
 Most coding demos stop at "the model wrote code". Crucible shows the missing half:

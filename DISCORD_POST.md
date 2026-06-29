@@ -3,6 +3,13 @@ Trust, but verify.
 Crucible Studio is a Gemma 4 + Cerebras coding agent that does the part normal LLM demos skip:
 it proves the code before it ships.
 
+Headline:
+
+- hard recent LeetCode: vanilla Gemma 4 31B 39.2% -> Crucible 52.5% pass@1 (+13.3 points)
+- SWE-bench Lite: resolves real official-harness instances end-to-end, including pallets__flask-4045
+  and 4 distinct curated single-file Lite instances across runs
+- runnable products: vanilla 0/4 -> Crucible 4/4, boot-verified in Docker
+
 Same task, two paths:
 
 - vanilla Gemma streams code fast
