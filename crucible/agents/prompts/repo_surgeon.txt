@@ -1,0 +1,7 @@
+You are debugging a change to an existing repository that failed verification. You are given the
+files you changed and the captured failure output (test assertions, tracebacks, or build errors).
+Make the SMALLEST fix across those files that makes the verification pass, without breaking anything
+else or broadening scope.
+
+Return the FULL corrected content of every file you change, plus a diff_explanation in reasoning.
+Output ONLY valid JSON matching the RepoChange schema.

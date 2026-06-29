@@ -1,0 +1,29 @@
+  [1/6] calculator …
+    A=PASS (0.6s)  B=PASS (18.3s, verified)
+  [2/6] templating_engine …
+    A=PASS (0.3s)  B=PASS (26.5s, verified)
+  [3/6] url_router …
+    A=PASS (0.5s)  B=PASS (12.4s, verified)
+  [4/6] lru_cache …
+    A=PASS (0.3s)  B=PASS (6.3s, verified)
+  [5/6] rate_limiter …
+    A=PASS (0.3s)  B=PASS (6.0s, verified)
+  [6/6] csv_parser …
+    A=PASS (0.4s)  B=PASS (26.8s, verified)
+Crucible offline delta — 6 problem(s) × 1 seed(s), sandbox=local
+
+
+======================================================================================
+problem                           vanilla(A)  crucible(B)  A t    B t     Δ         
+--------------------------------------------------------------------------------------
+calculator                        ✅ pass      ✅ pass       0.6    18.3              
+templating_engine                 ✅ pass      ✅ pass       0.3    26.5              
+url_router                        ✅ pass      ✅ pass       0.5    12.4              
+lru_cache                         ✅ pass      ✅ pass       0.3    6.3               
+rate_limiter                      ✅ pass      ✅ pass       0.3    6.0               
+csv_parser                        ✅ pass      ✅ pass       0.4    26.8              
+======================================================================================
+pass@1   vanilla(A): 6/6 (100%)   →   crucible(B): 6/6 (100%)
+recovered (A✗→B✓): 0   regressed (A✓→B✗): 0   net: +0
+median wall-clock   A: 0.4s   B: 15.3s
+delta: +0 problem(s) (+0 pts) for Crucible over vanilla

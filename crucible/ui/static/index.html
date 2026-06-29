@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Crucible Studio — code that fought back and survived</title>
+<link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+<div class="field"><div class="grid"></div></div>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">
+      <div class="mark"></div>
+      <div>
+        <h1>CRUCIBLE</h1>
+        <div class="sub">The only Gemma harness fast enough to attack its own output five ways and prove it isn't a facade. Only verified code ships.</div>
+      </div>
+    </div>
+    <div class="top-right">
+      <div class="powered"><span class="dot-live"></span> <b>Gemma&nbsp;4&nbsp;31B</b> on <b>Cerebras</b></div>
+      <button class="tg" id="themeBtn" title="toggle theme">◐</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="tabs" id="tabs">
+      <button class="tab on" data-mode="code">Code a function</button>
+      <button class="tab" data-mode="app">Build an app</button>
+      <button class="tab" data-mode="repo">Fix a repo</button>
+    </div>
+    <div class="pinput"><span class="chev">›</span><input id="prompt" value="merge overlapping booking intervals" /></div>
+    <button class="run" id="run-btn">Run&nbsp;▶</button>
+  </div>
+
+  <div class="split" id="split">
+    <!-- LEFT: GPU baseline (code mode only) -->
+    <div class="panel gpu" id="pBase">
+      <div class="phead"><div class="glyph">G</div><h2 id="base-name">Gemma 4 31B · Google AI Studio</h2><div class="timer" id="base-timer">GPU · 0.0s</div></div>
+      <div class="pbody">
+        <div class="code" id="vanilla-code"><span class="dim">// the GPU baseline writes one confident answer…</span></div>
+        <div class="stamp bad" id="vanilla-verdict">⚠ Unverified</div>
+      </div>
+    </div>
+
+    <!-- MIDDLE: Crucible -->
+    <div class="panel crucible" id="pCru">
+      <div class="phead"><div class="glyph">⚒</div><h2>Crucible · Cerebras</h2><div class="tag" id="cru-tag">5 agents · oracle gauntlet</div></div>
+      <div class="pbody">
+        <div class="agents" id="agents"></div>
+        <div class="process" id="process"><div class="placeholder">Crucible only ships code that survived the gauntlet. Hit Run.</div></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: live app preview (app mode) -->
+    <div class="panel preview" id="pPreview">
+      <div class="phead"><div class="glyph">▶</div><h2>Live preview</h2><div class="tag" id="prev-tag">renders as it builds</div></div>
+      <div class="prev-body">
+        <iframe id="appFrame" title="live app" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"></iframe>
+        <div class="prev-empty" id="prev-empty">Your app appears here, live and clickable, the moment Crucible builds it.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hud">
+    <div class="metric cb"><div class="lab">Cerebras throughput</div><div class="big"><span id="tps-value">0</span> <span class="unit">tok/s</span></div><div class="who" id="cb-who">Gemma 4 31B · live</div><span id="tps-badge" hidden></span></div>
+    <div class="metric gp"><div class="lab" id="gp-lab">GPU baseline</div><div class="big"><span id="gp-tps">0</span> <span class="unit">tok/s</span></div><div class="who" id="vanilla-stats">unverified</div><span id="vanilla-sub" hidden></span></div>
+    <div class="verdict" id="verdict">
+      <div class="seal" id="deliver-badge">verifying…</div>
+      <button class="cmp-btn" id="compare-btn" disabled>▶ Run the counterexample through both</button>
+    </div>
+  </div>
+
+  <div class="compare hide" id="compare"></div>
+  <!-- deliverable code kept off-screen; surfaced in process stream -->
+  <div id="deliver-code" hidden></div>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>

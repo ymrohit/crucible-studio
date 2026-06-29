@@ -1,0 +1,159 @@
+
+▶ Crucible: [repo] add a 'split between N people' feature: add a number input with id 'people' (with a label) to index.html, a splitPerPerson(amount, tipPct, people) function in app.js, and show the per-person amount in #result when Calculate is clicked
+
+  ● architect …
+    ↳ node · 2 file(s) · verify: npm test
+  ● adversary …
+    ↳ wrote check test.js
+  ● implementer …
+    ↳ edited 2 file(s)
+
+── iteration 1 ──
+    [verify     ] running…    [verify     ] PASS  `npm test` passed (1.3s)
+    [visual-qa  ] running…  ● arbiter …
+    ↳ visual QA — looks correct
+    [visual-qa  ] PASS  The page displays a 'Tip Calculator' heading with three input fields: 'Bill amou
+
+✅ DELIVERED — verified by the gauntlet
+
+
+========================================================================
+STATUS: VERIFIED ✅  (change passes the repo's verification)
+========================================================================
+
+--- proposed diff ---
+ app.js            | 13 ++++++++++---
+ index.html        |  3 ++-
+ package-lock.json | 12 ++++++++++++
+ test.js           | 51 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 75 insertions(+), 4 deletions(-)
+
+diff --git a/app.js b/app.js
+index cff9044..1e05de3 100644
+--- a/app.js
++++ b/app.js
+@@ -5,6 +5,10 @@ function calculateTip(amount, pct) {
+ function totalWithTip(amount, pct) {
+   return amount + calculateTip(amount, pct);
+ }
++function splitPerPerson(amount, tipPct, people) {
++  if (people <= 0) return 0;
++  return totalWithTip(amount, tipPct) / people;
++}
+ 
+ if (typeof document !== "undefined") {
+   document.addEventListener("DOMContentLoaded", () => {
+@@ -12,12 +16,15 @@ if (typeof document !== "undefined") {
+     calc.addEventListener("click", () => {
+       const amount = parseFloat(document.getElementById("amount").value) || 0;
+       const pct = parseFloat(document.getElementById("tip").value) || 0;
++      const people = parseInt(document.getElementById("people").value) || 1;
++      const total = totalWithTip(amount, pct);
++      const perPerson = splitPerPerson(amount, pct, people);
+       document.getElementById("result").textContent =
+-        "Total: $" + totalWithTip(amount, pct).toFixed(2);
++        `Total: $${total.toFixed(2)}, Per Person: $${perPerson.toFixed(2)}`;
+     });
+   });
+ }
+ 
+ if (typeof module !== "undefined") {
+-  module.exports = { calculateTip, totalWithTip };
+-}
++  module.exports = { calculateTip, totalWithTip, splitPerPerson };
++}
+\ No newline at end of file
+diff --git a/index.html b/index.html
+index 255d536..2c3c5ba 100644
+--- a/index.html
++++ b/index.html
+@@ -5,8 +5,9 @@
+   <h1>Tip Calculator</h1>
+   <label>Bill amount <input id="amount" type="number" /></label>
+   <label>Tip % <input id="tip" type="number" /></label>
++  <label>Number of people <input id="people" type="number" /></label>
+   <button id="calc">Calculate</button>
+   <p id="result"></p>
+   <script src="app.js"></script>
+ </body>
+-</html>
++</html>
+\ No newline at end of file
+diff --git a/package-lock.json b/package-lock.json
+new file mode 100644
+index 0000000..09d5a24
+--- /dev/null
++++ b/package-lock.json
+@@ -0,0 +1,12 @@
++{
++  "name": "tipcalc",
++  "version": "1.0.0",
++  "lockfileVersion": 3,
++  "requires": true,
++  "packages": {
++    "": {
++      "name": "tipcalc",
++      "version": "1.0.0"
++    }
++  }
++}
+diff --git a/test.js b/test.js
+new file mode 100644
+index 0000000..c37a3e9
+--- /dev/null
++++ b/test.js
+@@ -0,0 +1,51 @@
++const test = require('node:test');
++const assert = require('node:assert');
++const fs = require('node:fs');
++const path = require('node:path');
++const { splitPerPerson } = require('./app.js');
++
++test('splitPerPerson logic', async (t) => {
++  await t.test('calculates correct split for multiple people', () => {
++    // (100 + 20% of 100) / 2 = 120 / 2 = 60
++    assert.strictEqual(splitPerPerson(100, 20, 2), 60);
++  });
++
++  await t.test('calculates correct split for 1 person', () => {
++    // (100 + 15% of 100) / 1 = 115 / 1 = 115
++    assert.strictEqual(splitPerPerson(100, 15, 1), 115);
++  });
++
++  await t.test('handles zero amount', () => {
++    assert.strictEqual(splitPerPerson(0, 20, 2), 0);
++  });
++
++  await t.test('handles zero people (division by zero)', () => {
++    const result = splitPerPerson(100, 20, 0);
++    // In JS, division by zero is Infinity. 
++    // We check that it doesn't throw and returns a value that indicates it handled it
++    // (either Infinity or 0 depending on implementation, but it must not crash).
++    assert.ok(result === Infinity || result === 0, 'Should return Infinity or 0 when people is 0');
++  });
++
++  await t.test('handles negative people', () => {
++    const result = splitPerPerson(100, 20, -1);
++    assert.ok(result === -120 || result === 0, 'Should handle negative input gracefully');
++  });
++});
++
++test('index.html structure', async (t) => {
++  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
++
++  await t.test('has input with id "people"', () => {
++    assert.ok(html.includes('id="people"'), 'Missing input with id="people"');
++    assert.ok(html.includes('type="number"'), 'Input "people" should be type="number"');
++  });
++
++  await t.test('has label for people input', () => {
++    // Check if there is a <label> that contains the word "people" or wraps the input
++    const labelRegex = /<label[^>]*>(.*?)<input id="people"[^>]*><\/label>/i;
++    const labelTextRegex = /<label[^>]*>.*?people.*?<\/label>/i;
++    const hasLabel = labelRegex.test(html) || labelTextRegex.test(html) || html.includes('<label') && html.includes('id="people"');
++    assert.ok(hasLabel, 'Missing label for the people input');
++  });
++});
+
+
+[tokens: 9295/250000 · iters: 1/8 · 9.0s]

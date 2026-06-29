@@ -1,0 +1,36 @@
+
+▶ Crucible: [repo] fix the discount calculation so all tests pass; pct is a percentage from 0 to 100
+
+  ● architect …
+    ↳ python · 1 file(s) · verify: python -m pytest -q
+  ● implementer …
+    ↳ edited 1 file(s)
+
+── iteration 1 ──
+    [verify     ] running…    [verify     ] PASS  `python -m pytest -q` passed (3.9s)
+
+✅ DELIVERED — verified by the gauntlet
+
+
+========================================================================
+STATUS: VERIFIED ✅  (change passes the repo's verification)
+========================================================================
+
+--- proposed diff ---
+ inventory.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/inventory.py b/inventory.py
+index 054f9a4..43014b4 100644
+--- a/inventory.py
++++ b/inventory.py
+@@ -7,4 +7,4 @@ def total_value(items):
+ 
+ def apply_discount(total, pct):
+     """Apply a percentage discount. pct is a percentage in 0..100."""
+-    return total - total * pct   # BUG: treats pct as a fraction, not a percentage
++    return total - total * (pct / 100)
+\ No newline at end of file
+
+
+[tokens: 2282/250000 · iters: 1/8 · 5.36s]

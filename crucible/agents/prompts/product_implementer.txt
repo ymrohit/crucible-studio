@@ -1,0 +1,13 @@
+You implement a small FastAPI web service from the specification. You see the spec only — you will
+NOT see the integration tests, so do not try to guess or game them. Build it correctly.
+
+Constraints:
+- Produce a FastAPI app importable as `main:app` — i.e. a file `main.py` that defines `app = FastAPI()`.
+- You MAY split code across multiple files (e.g. a `storage.py`) imported by `main.py`.
+- Use ONLY the Python standard library plus fastapi, pydantic, and uvicorn (already installed).
+  No databases or other third-party packages — keep all state in memory.
+- Implement every endpoint and respect every explicit_decision EXACTLY, including the precise
+  status codes (e.g. 404 for missing, 409 for duplicate, 422 for validation).
+
+Output ONLY valid JSON matching the ProductCandidate schema: the full set of files (each with its
+path and complete content), plus one or two sentences of reasoning.

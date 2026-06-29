@@ -1,0 +1,46 @@
+# Secrets and local config
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.hypothesis/
+.pyright/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+frontend/node_modules/
+node_modules/
+.npm/
+
+# Local/editor noise
+.DS_Store
+*.swp
+*.swo
+.idea/
+.vscode/
+.claude/
+.codex/
+.agents/
+
+# Generated benchmark/evaluation artifacts
+logs/
+audit/
+outputs/
+*.jsonl
+crucible.crucible_*.json
+gold.gold_build.json
+CompetitionBrief.pdf
+*.Zone.Identifier
+*:Zone.Identifier
+crucible/bench/data/swebench/
+
+# Runtime scratch
+tmp/
+*.log

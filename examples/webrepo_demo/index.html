@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Score Meter</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 420px; margin: 40px auto; }
+    .track { height: 28px; background: #eee; border-radius: 14px; overflow: hidden; }
+    .fill { height: 100%; width: 0; background: #2e7d32; transition: width .2s; }
+    label { display: block; margin: 8px 0; }
+    input { width: 80px; }
+    #label { font-weight: 600; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Score Meter</h1>
+  <label>Value <input id="value" type="number" value="75" /></label>
+  <label>Max <input id="max" type="number" value="100" /></label>
+  <div class="track"><div id="fill" class="fill"></div></div>
+  <p id="label"></p>
+  <script src="app.js"></script>
+</body>
+</html>

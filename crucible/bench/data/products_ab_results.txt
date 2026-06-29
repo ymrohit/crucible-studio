@@ -1,0 +1,19 @@
+[1/4] a URL-shortener REST service
+    vanilla=◻ boots, fails   crucible=verified (iters=2, 11s)
+[2/4] an in-memory todo-list REST API with create, list, get, update, and delete
+    vanilla=◻ boots, fails   crucible=verified (iters=3, 12s)
+[3/4] an in-memory key-value store REST API with set, get, delete, and per-key TTL expiry
+    vanilla=◻ boots, fails   crucible=verified (iters=1, 15s)
+[4/4] a paginated notes REST API (create a note, list notes with ?page= and ?size=)
+    vanilla=◻ boots, fails   crucible=verified (iters=2, 10s)
+
+============================================================================================
+product                                             vanilla(1-shot)   crucible(loop)  iters 
+--------------------------------------------------------------------------------------------
+a URL-shortener REST service                        ◻ boots, fails    ✅ verified      2     
+an in-memory todo-list REST API with create, list,  ◻ boots, fails    ✅ verified      3     
+an in-memory key-value store REST API with set, ge  ◻ boots, fails    ✅ verified      1     
+a paginated notes REST API (create a note, list no  ◻ boots, fails    ✅ verified      2     
+============================================================================================
+shipped a working, boot-verified service:  vanilla(1-shot) 0/4   →   crucible 4/4
+(both built to the SAME frozen spec; tested against the SAME blind integration test, in Docker)

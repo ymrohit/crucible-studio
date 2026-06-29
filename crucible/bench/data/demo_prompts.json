@@ -1,0 +1,67 @@
+{
+  "_meta": {
+    "purpose": "Vetted, reliable prompts/fixtures for the 60-second Crucible demo video.",
+    "model": "Gemma 4 31B on Cerebras",
+    "how_to_run": {
+      "code_or_app": "python -m crucible \"<prompt>\"   (console sink prints the counterexample catch + diff)",
+      "repo": "repo mode: point Crucible at the named repo dir + task; it verifies by running tests/vision in a container"
+    },
+    "vetting_note": "code prompts below were chosen to be BOUNDED (integer/string domains) so the loop never floor-thrashes on stage. AVOID free-form 'discount with a max cap' and 'parse 1h30m duration' prompts: both were tested live on the 31B and both ran all 8 iterations into FLOOR (Decimal/InvalidOperation huge-float thrash; whitespace-literal + adversary bad_test loops). Bounded curated problems verify cleanly in 1-2 iterations."
+  },
+
+  "code": [
+    {
+      "id": "merge_intervals",
+      "hero": true,
+      "prompt": "merge a list of overlapping booking intervals into the minimal set of non-overlapping intervals; touching intervals like (9,10) and (10,11) must merge into (9,11), the input may be unsorted, and nested intervals collapse into the enclosing one",
+      "note": "Touching-edge off-by-one: the classic miss is a strict `next_start < current_end` that fails to merge (9,10)+(10,11). When the first draft uses `<`, the Adversary's touching example catches it; either way it verifies in 1-2 iters and NEVER floors (tested live: VERIFIED in 1 iter, 8.8s).",
+      "why_hero": "Most reliable dramatic catch for a live demo: bounded integer domain (no thrash risk), fast (~9-20s), and the (9,10)+(10,11) counterexample is instantly intuitive to an audience."
+    },
+    {
+      "id": "paginate",
+      "prompt": "paginate a list into 1-indexed pages of a given size: page 1 is the first page, the last page may be partial, a page beyond the end returns an empty list, and if page size exceeds the item count page 1 returns everything",
+      "note": "1-indexed off-by-one (slicing from page*size instead of (page-1)*size) and the beyond-range empty page are the reliable first-draft misses. Bounded, fast, no floor risk."
+    },
+    {
+      "id": "valid_parentheses",
+      "prompt": "return whether a string of brackets '()[]{}' is balanced: every opener closed by the matching closer in the right order; the empty string is valid (True) and a leftover opener like '(' is invalid",
+      "note": "Two clean catches: a lone leftover opener '(' wrongly returning True (empty-stack check missing) and the interleaved mismatch '([)]'. Tiny, fast, very low thrash risk."
+    },
+    {
+      "id": "roman_to_int",
+      "prompt": "convert a valid Roman numeral string (I,V,X,L,C,D,M) to its integer value, handling the subtractive forms IV, IX, XL, XC, CD, CM",
+      "note": "Subtractive notation is the catch: a naive left-to-right sum gives IV=6 instead of 4 and MCMXCIV wrong. Bounded string domain, no floor risk."
+    }
+  ],
+
+  "app": [
+    {
+      "id": "url_shortener",
+      "prompt": "a URL-shortener REST service: POST a long URL and get back a short code, GET the code and 301-redirect to the original; unknown codes return 404",
+      "note": "Vetted in the product A/B run: vanilla one-shot boots but fails the blind integration test; Crucible ships it boot-verified in Docker (2 iters). The Arbiter's code_bug/underspecified call was the difference here."
+    },
+    {
+      "id": "todo_crud_api",
+      "prompt": "an in-memory todo-list REST API with create, list, get, update, and delete endpoints; getting or deleting a missing id returns 404",
+      "note": "Vetted product: vanilla boots-but-fails (wrong status codes / error-body shape), Crucible verified in 3 iters. Clean CRUD story for the 'build an app' beat."
+    }
+  ],
+
+  "repo": [
+    {
+      "repo": "examples/pyrepo",
+      "task": "fix the discount calculation so all tests pass; pct is a percentage from 0 to 100",
+      "note": "DETERMINISTIC catch-and-fix (the safest dramatic 'caught a bug' beat). Planted bug: apply_discount treats pct as a fraction, not a percentage; pytest is red. Crucible fixes to `total - total*(pct/100)`, pytest green in a container, clean 1-line diff, 1 iteration (see repo_fix_demo.txt). Requires pytest in the run env (the loop runs it in-container)."
+    },
+    {
+      "repo": "examples/webrepo",
+      "task": "add a 'split between N people' feature",
+      "note": "Build-a-feature beat with the vision-QA payoff. Vanilla-JS tip calculator; the blind Adversary writes the logic+DOM check, the Implementer adds splitPerPerson() and the #people input, `npm test` (node --test) green, then the vision model confirms the new input field on the rendered screenshot (see repo_ui_visual_demo.txt + webrepo_screenshot.png)."
+    },
+    {
+      "repo": "examples/webrepo_demo",
+      "task": "fix the score meter so the bar fills to the right level (value out of max), clamped between 0% and 100%",
+      "note": "NEW fixture for the vision-QA repo-fix beat with an UNMISTAKABLE visual before/after. Planted bug: barWidth returns the raw ratio as a percent string ('0.75%') instead of scaling to a percentage and clamping, so the green bar is nearly invisible even at a high score. Fix (`*100` + clamp) makes the bar visibly fill; `npm test` goes red->green and the screenshot diff is obvious. Self-contained, no network."
+    }
+  ]
+}
