@@ -1,129 +1,153 @@
-# Crucible
+# Crucible Studio
 
-**The only Gemma harness fast enough to attack its own output five ways and prove it isn't a facade.**
+**Trust, but verify for generated code.**
 
-A blind adversary writes the tests, an executable oracle gauntlet runs them, a surgeon repairs from
-counterexamples, and only verified code ships. Powered by **Gemma 4 31B on Cerebras (~1,800 tok/s)**.
+Crucible Studio is a Gemma 4 / Cerebras agent system that refuses to ship code just because it
+looks plausible. It turns a prompt into a frozen contract, generates adversarial tests blind to the
+candidate, executes a real oracle gauntlet, repairs from counterexamples, and only marks the result
+verified when the runtime evidence goes green.
 
-> Vanilla AI gives you code that looks right. Crucible gives you code that fought back and survived.
+[Watch the demo video](Crucible.mp4)
 
-The Gemma team's stated #1 gripe is models that produce "the shape of correct" - facades that pass a
-glance and fail in production. Crucible is built to answer exactly that: it splits one model into five
-**non-colluding roles** and never lets any of them grade its own homework. Pass/fail comes only from
-executing code, never from an LLM judging itself.
+Public repo: https://github.com/ymrohit/crucible-studio
 
+## What It Shows
+
+Most coding demos stop at "the model wrote code". Crucible shows the missing half:
+
+```text
+Prompt
+  -> Architect freezes the spec
+  -> Adversary writes tests without seeing the code
+  -> Implementer writes code without seeing the tests
+  -> Oracle executes parse, typecheck, smoke, examples, properties, differential
+  -> Surgeon repairs from the failing counterexample
+  -> Arbiter handles repeated failures as code bug, bad test, or underspecified prompt
+  -> Verified code ships, or a clearly labeled floor is returned
 ```
-prompt -> Architect (frozen spec) -> Adversary (blind tests) -> Implementer (blind code)
-        -> ORACLE GAUNTLET  parse -> typecheck -> smoke -> examples -> properties -> differential
-        -> green? DELIVER  |  red? Surgeon repairs from the shrunk counterexample
-        -> same stage fails twice? Arbiter rules: code_bug / bad_test / underspecified
-```
 
-The roles **cannot collude** - it is enforced at the function-signature level:
-- The **Adversary** sees the spec only, never the candidate code (it cannot weaken a test to bless a bug).
-- The **Implementer** sees the spec only, never the oracle (it cannot game the tests).
-- The **oracle owns the score** - verdicts come from real execution and static analysis, not self-judgement.
+The UI puts this next to a vanilla Gemma baseline so judges can see the difference live: fast
+unverified output on one side, evidence-backed output on the other.
 
-When a problem cannot be solved, Crucible says exactly what it could not verify instead of shipping
-confident garbage. Calibration, not 100%.
+## Why It Matters
 
-## Three modes, one verify-first loop
+LLMs are very good at producing code-shaped text. The hard part is knowing when the answer is
+actually correct.
 
-**1. Code a function** - give it a problem, get back a function that survived the gauntlet.
-```bash
-python -m crucible "merge overlapping booking intervals"
-```
-Architect freezes the spec, the blind Adversary writes property + example tests, the Implementer codes
-blind to those tests, the oracle executes everything (with Hypothesis property fuzzing), and the Surgeon
-repairs from the shrunk minimal counterexample until green.
+Crucible makes correctness observable:
 
-**2. Build an app** - a real multi-file FastAPI service, verified by actually running it.
-```bash
-docker build -f docker/product.Dockerfile -t crucible-product:latest docker/   # once
-python -m crucible.product "a URL-shortener REST service"
-```
-The Architect freezes the API contract, the blind Adversary writes an HTTP integration test, the
-Implementer writes the files, and the oracle is a **real Docker container** that boots `uvicorn main:app`
-(`--network none`) and runs the test. Only a service that boots and passes ships.
+- The test writer cannot see the implementation.
+- The implementation writer cannot see the tests.
+- The model never grades itself.
+- The verdict comes from execution, not prose.
+- Counterexamples are surfaced in the UI so judges can inspect the exact failure.
+- Generated tests, final code, and gauntlet output remain visible instead of disappearing between tabs.
 
-**3. Fix a repo** - point it at an existing codebase and say "build X" or "fix Y".
-```bash
-python -m crucible.repo <repo-path> "fix the discount calculation so the tests pass"
-```
-The Architect reads the repo and plans the minimal change plus a verify command, the Implementer makes
-minimal search/replace edits, and the oracle **applies the change to a copy and runs the verification in
-a container**. It ships a verified git diff. For web UIs it also renders the page in a headless browser
-and the **vision model reviews the screenshot** to catch visual facades (missing controls, broken layout,
-nothing rendered) that DOM tests cannot.
+This is especially useful for complex prompts where one-shot generation often looks impressive but
+silently misses state, boundary, idempotency, ordering, or mutation bugs.
 
-## Results
+## Demo Modes
 
-All numbers are reproducible; the loop **never sees the hidden scoring tests** (only its own blind
-Adversary oracle does). Full methodology and run logs are in [`RESULTS.md`](RESULTS.md).
+### Code
 
-- **Hard recent LeetCode (rigorous, 3 seeds):** 39.2% -> **52.5%** pass@1, **+13.3 points**. The slice is
-  40 Medium/Hard problems dated Feb-Mar 2025 (after model cutoffs, low contamination). Clean separation:
-  Crucible's worst seed (48%) beats vanilla's best (42%).
-- **Building real runnable products:** vanilla **0/4** -> Crucible **4/4**, every service **boot-verified
-  in a `--network none` Docker container** against a blind HTTP integration test.
-- **SWE-bench Lite (official harness):** Crucible **resolves real instances** end-to-end (e.g.
-  `pallets__flask-4045`), running the verify-first loop inside each instance's real `/testbed`.
-- **Vision QA catches visual facades:** the vision model correctly caught a missing input by looking at
-  the rendered page, then passed the completed UI.
+Generate a fresh function from a complex prompt. Crucible creates the contract, writes hostile tests,
+runs the gauntlet, repairs failures, and returns verified code.
 
-Crucible's failures are loud and rare; vanilla's are silent and confident. That contrast is the point.
+Good demo prompts include stateful or edge-heavy tasks:
 
-## System requirements
+- Per-user rolling-window rate limiting with duplicate event IDs and out-of-order timestamps.
+- Nested rules engines with stable rejection explanations.
+- Inventory ledgers with reservation, release, expiry, and invalid-event accounting.
 
-- **Python 3.12**
-- **Docker** for the execution sandbox (`docker info` reachable). A hardened local backend exists for
-  hosts without a daemon, but `--network none` isolation is real only under Docker.
-- **~4 GB RAM free** (candidate subprocesses are memory-capped, default 2 GB each).
-- **A Cerebras API key with Gemma 4 31B access** (required).
-- **A Google AI Studio key** for the same model (optional; used only for the vanilla speed race).
+### Fix
 
-## Setup
+Paste broken code on the left and get corrected code on the right. This is the fastest judge demo:
+they can edit the broken function, run it, open the Test tab, inspect the generated adversarial cases,
+and open Output to see the actual failure and repair trail.
+
+The included limiter example intentionally fails at boundary/idempotency behavior. Crucible catches
+the concrete counterexample, patches it, and shows the tests that forced the repair.
+
+### Build
+
+Generate a small interactive application and run a verification loop against the rendered result.
+This mode is designed to show that Crucible is not only a function harness; it can also reason about
+product behavior and UI output.
+
+## Quick Start
 
 ```bash
-python -m venv .venv
-.venv/bin/pip install -r requirements.txt
-cp .env.example .env        # then open .env and fill in your keys
-cd frontend && npm install && npm run build && cd ..
+git clone https://github.com/ymrohit/crucible-studio.git
+cd crucible-studio
+cp .env.example .env
 ```
 
-## Run
+Fill in `.env`:
 
 ```bash
-# one-command judge/demo path
-./run_studio.sh                       # -> http://127.0.0.1:8001
+CEREBRAS_API_KEY=your_cerebras_api_key_here
+AISTUDIO_GEMMA4_KEY=your_google_ai_studio_key_here
+CRUCIBLE_MODEL=gemma-4-31b
+CRUCIBLE_SANDBOX=local
 ```
-Then open **http://127.0.0.1:8001**.
 
-In the UI, type a prompt and watch live: vanilla Gemma streams fast-but-unverified code on the LEFT; on
-the RIGHT the pipeline lights up, the gauntlet stages flip green/red, a counterexample card appears with
-the Hypothesis-shrunk minimal input, the Surgeon patches it, and the gauntlet goes green. Only verified
-code reaches the deliverable. A live tokens/sec readout (from Cerebras `time_info`) runs the whole time.
+Run the studio:
 
-See [`JUDGE_QUICKSTART.md`](JUDGE_QUICKSTART.md) for the short clone-to-demo instructions.
+```bash
+./run_studio.sh
+```
+
+Open:
+
+```text
+http://127.0.0.1:8001
+```
+
+The script creates a virtualenv if needed, installs Python dependencies, installs frontend
+dependencies when missing, builds the Svelte UI, and starts the FastAPI SSE server.
+
+## Judge Path
+
+For a fast review:
+
+1. Open `http://127.0.0.1:8001`.
+2. Choose **Fix**.
+3. Keep the **broken limiter** case selected.
+4. Click **Run**.
+5. Open **Test** to inspect the adversarial examples/properties.
+6. Open **Output** to inspect the gauntlet stages, counterexample, and repair.
+7. Open **Fixed** to see the corrected implementation.
+
+No credentials are committed. Use `.env.example` as the template.
 
 ## Architecture
 
-See [`SPEC.md`](SPEC.md) for the full spec.
-
-| Path | What |
+| Path | Purpose |
 |---|---|
-| `crucible/shared/schemas.py` | the seam - every pydantic model, drives strict json_schema |
-| `crucible/agents/` | Cerebras client, the 5 roles, verbatim prompts |
-| `crucible/oracle/` | `gauntlet.py`, `sandbox.py`, stages, program builders |
-| `crucible/orchestrator/` | state machine, budget, events, console |
-| `crucible/bench/` | `vanilla_baseline.py`, benchmarks, curated problems |
-| `crucible/ui/` | FastAPI SSE server + the split-screen frontend |
+| `crucible/agents/` | Architect, Adversary, Implementer, Surgeon, Arbiter, and provider runtime |
+| `crucible/oracle/` | Deterministic gauntlet stages and sandboxed execution harness |
+| `crucible/orchestrator/` | Repair state machine, budgets, event stream, and routing |
+| `crucible/ui/server.py` | FastAPI server and SSE fan-in for live runs |
+| `frontend/src/` | Svelte Studio UI |
+| `examples/` | Bundled demo repositories and sample repair targets |
+| `JUDGE_QUICKSTART.md` | Short setup instructions for reviewers |
 
-### Hard guarantees baked in
-- **Output is gated.** Nothing ships unless the gauntlet is all-green, or a clearly-labeled graceful floor
-  (best partial + the exact stage it could not verify).
-- **Budget is hard.** 60k tokens / 8 iterations / 90s, charged from real usage - the loop cannot run away.
-- **Timeout = fail, never hang.** Every sandbox subprocess has a hard kill (process-group SIGKILL).
-- **Determinism.** `PYTHONHASHSEED=0`, Hypothesis `derandomize=True`, fixed fuzz space.
-- **Tamper-proof verdicts.** The verdict line is tagged with a secret per-run nonce so candidate code
-  cannot forge a passing result.
+## Guarantees
+
+- **Blind roles:** Adversary and Implementer do not share hidden context.
+- **Executable verdicts:** parse, typecheck, smoke, examples, property tests, and differential checks
+  are real stages, not model self-evaluation.
+- **Visible evidence:** generated tests, counterexamples, output, and final code are inspectable.
+- **Floor instead of bluffing:** if verification cannot finish, the UI labels the best partial result
+  and the unverified stage.
+- **No secrets in repo:** credentials live only in `.env`; `.env.example` documents required keys.
+
+## Demo Video
+
+The submitted demo video is included at:
+
+```text
+Crucible.mp4
+```
+
+If GitHub does not inline-play it in your browser, download the file from the repository root.
